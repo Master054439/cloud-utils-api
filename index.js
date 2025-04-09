@@ -17,12 +17,11 @@ app.post("/ask", async (req, res) => {
   try {
     const prompt = req.body.prompt;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }]
-    });
+    const model = genAI.getModel("models/gemini-1.5-flash"); // ✅ correct method
+    const result = await model.generateContent(prompt);      // ✅ simplified usage
 
-    const text = result.response.text();
+    const response = await result.response;
+    const text = response.text();
     res.json({ text });
   } catch (err) {
     console.error("Backend Error:", err);
@@ -31,7 +30,7 @@ app.post("/ask", async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("AI Form Autofill Backend is running.");
+  res.send("✅ AI Form Autofill Backend is running.");
 });
 
 const PORT = process.env.PORT || 3000;
