@@ -1,39 +1,51 @@
-import express from "express";
-import cors from "cors";
-import bodyParser from "body-parser";
-import dotenv from "dotenv";
-import pkg from "@google/genai";
-const { GoogleGenAI } = pkg;
-
-dotenv.config();
+// index.js
+const express = require('express');
+const cors = require('cors');
+const fetch = require('node-fetch');
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const API_KEY = process.env.GEMINI_API_KEY; // Keep this safe in .env
+const MODEL_NAME = 'gemini-1.5-flash';
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
-app.post("/ask", async (req, res) => {
+app.post('/ask', async (req, res) => {
+  const userPrompt = req.body.prompt;
+
+  const payload = {
+    contents: [
+      {
+        parts: [{ text: userPrompt }],
+      },
+    ],
+  };
+
   try {
-    const prompt = req.body.prompt;
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
-    const model = genAI.getModel("models/gemini-1.5-flash"); // ✅ correct method
-    const result = await model.generateContent(prompt);      // ✅ simplified usage
+    const data = await response.json();
 
-    const response = await result.response;
-    const text = response.text();
-    res.json({ text });
+    if (!response.ok) {
+      console.error('Gemini Error:', data);
+      return res.status(response.status).json({ error: data });
+    }
+
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini';
+    res.json({ response: text });
   } catch (err) {
-    console.error("Backend Error:", err);
-    res.status(500).json({ error: "AI generation failed." });
+    console.error('Backend Error:', err);
+    res.status(500).json({ error: 'Failed to contact Gemini API' });
   }
-});
-
-app.get("/", (req, res) => {
-  res.send("✅ AI Form Autofill Backend is running.");
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🔥 Server listening on port ${PORT}`);
 });
