@@ -1,41 +1,26 @@
 import express from "express";
-import bodyParser from "body-parser";
-import cors from "cors";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai";
 
+dotenv.config();
 const app = express();
-const port = process.env.PORT || 3000;
+app.use(express.json());
 
-// ✅ Use environment variable for API Key
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-app.use(cors());
-app.use(bodyParser.json());
-
-app.post("/solve-form", async (req, res) => {
+app.post("/ask", async (req, res) => {
   try {
-    const questions = req.body.questions;
-    const prompt = `Answer the following form questions as accurately as possible:\n\n${questions
-      .map((q, i) => `${i + 1}. ${q.question}${q.options?.length ? ` (Options: ${q.options.join(", ")})` : ""}`)
-      .join("\n")}`;
-
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
+    const prompt = req.body.prompt;
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
-
-    const answers = text
-      .split("\n")
-      .filter(line => line.trim())
-      .map(line => line.replace(/^\d+\.\s*/, "").trim());
-
-    res.json({ answers });
+    const response = await result.response;
+    res.json({ text: response.text() });
   } catch (error) {
     console.error("Backend Error:", error);
-    res.status(500).json({ error: "Internal Server Error", details: error.toString() });
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+app.listen(3000, () => {
+  console.log("Server running on http://localhost:3000");
 });
