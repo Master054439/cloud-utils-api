@@ -1,40 +1,41 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
-
-dotenv.config();
+import express from "express";
+import bodyParser from "body-parser";
+import cors from "cors";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const app = express();
+const port = process.env.PORT || 3000;
+
+// ✅ Use environment variable for API Key
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-app.post('/solve-form', async (req, res) => {
+app.post("/solve-form", async (req, res) => {
   try {
     const questions = req.body.questions;
-    const prompt = questions.map((q, i) =>
-      `Q${i + 1}: ${q.question}\nOptions: ${q.options?.join(', ') || 'N/A'}`
-    ).join('\n\n');
+    const prompt = `Answer the following form questions as accurately as possible:\n\n${questions
+      .map((q, i) => `${i + 1}. ${q.question}${q.options?.length ? ` (Options: ${q.options.join(", ")})` : ""}`)
+      .join("\n")}`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    const result = await model.generateContent([
-      { role: 'user', parts: [{ text: `Please provide the best answers for the following form:\n\n${prompt}\n\nReturn a JSON array with answers in order.` }] }
-    ]);
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
-    const responseText = result.response.text();
-    const answers = JSON.parse(responseText);
+    const answers = text
+      .split("\n")
+      .filter(line => line.trim())
+      .map(line => line.replace(/^\d+\.\s*/, "").trim());
 
     res.json({ answers });
-  } catch (err) {
-    console.error('Backend Error:', err);
-    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  } catch (error) {
+    console.error("Backend Error:", error);
+    res.status(500).json({ error: "Internal Server Error", details: error.toString() });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
 });
