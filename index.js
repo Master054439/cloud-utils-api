@@ -1,8 +1,10 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { GoogleGenerativeAI } from "@google/genai";
 import dotenv from "dotenv";
+import pkg from "@google/genai";
+const { GoogleGenerativeAI } = pkg;
+
 dotenv.config();
 
 const app = express();
