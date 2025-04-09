@@ -3,7 +3,7 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import pkg from "@google/genai";
-const { GoogleGenerativeAI } = pkg;
+const { GoogleGenAI } = pkg;
 
 dotenv.config();
 
@@ -11,17 +11,18 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 app.post("/ask", async (req, res) => {
   try {
     const prompt = req.body.prompt;
 
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }]
+    });
 
+    const text = result.response.text();
     res.json({ text });
   } catch (err) {
     console.error("Backend Error:", err);
